@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Sign Up — CineMatch{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1>Create Account</h1>
+        <p class="subtitle">Join CineMatch and discover your next favorite movie</p>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="id_username">Username</label>
+                <input type="text" name="username" id="id_username" value="{{ form.username.value|default:'' }}"
+                    placeholder="Choose a username" required autofocus
+                    minlength="5" maxlength="30" pattern="[a-zA-Z0-9_]+">
+                <small class="form-help">Minimal 5 karakter. Hanya huruf, angka, dan underscore (_).</small>
+                {% for error in form.username.errors %}
+                <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_email">Email</label>
+                <input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}"
+                    placeholder="you@example.com" required>
+                <small class="form-help">Masukkan alamat email yang valid.</small>
+                {% for error in form.email.errors %}
+                <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_password1">Password</label>
+                <input type="password" name="password1" id="id_password1" placeholder="Create a password" required
+                    minlength="8">
+                <small class="form-help">Minimal 8 karakter. Tidak boleh terlalu umum atau hanya angka.</small>
+                {% for error in form.password1.errors %}
+                <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_password2">Confirm Password</label>
+                <input type="password" name="password2" id="id_password2" placeholder="Repeat your password" required
+                    minlength="8">
+                <small class="form-help">Ulangi password yang sama.</small>
+                {% for error in form.password2.errors %}
+                <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+        </form>
+
+        <p class="auth-footer">
+            Already have an account? <a href="{% url 'login' %}">Log in</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

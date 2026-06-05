@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Movies — CineMatch{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🎬 Explore Movies</h1>
+    <form class="search-bar" method="get" action="{% url 'catalog' %}">
+        <span class="search-icon">🔍</span>
+        <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Search movies...">
+    </form>
+</div>
+
+{% if movies %}
+<div class="movie-grid">
+    {% for movie in movies %}
+    <a href="{% url 'movie_detail' movie.tmdb_id %}" class="movie-card card">
+        <div class="poster-wrap">
+            {% if movie.poster_path %}
+            <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}" alt="{{ movie.title }}" loading="lazy">
+            {% else %}
+            <div class="no-poster">🎞️</div>
+            {% endif %}
+            <div class="poster-overlay">
+                <span>{{ movie.overview|truncatewords:20 }}</span>
+            </div>
+            <div class="rating-badge">⭐ {{ movie.vote_average|floatformat:1 }}</div>
+        </div>
+        <div class="card-body">
+            <h3>{{ movie.title }}</h3>
+            <p class="genres">
+                {% for g in movie.genres.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            </p>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if movies.has_other_pages %}
+<div class="pagination">
+    {% if movies.has_previous %}
+    <a href="?{% if query %}q={{ query }}&{% endif %}page={{ movies.previous_page_number }}">← Prev</a>
+    {% else %}
+    <span class="disabled">← Prev</span>
+    {% endif %}
+
+    {% for num in movies.paginator.page_range %}
+    {% if movies.number == num %}
+    <span class="current">{{ num }}</span>
+    {% elif num > movies.number|add:"-3" and num < movies.number|add:"3" %} <a
+        href="?{% if query %}q={{ query }}&{% endif %}page={{ num }}">{{ num }}</a>
+        {% endif %}
+        {% endfor %}
+
+        {% if movies.has_next %}
+        <a href="?{% if query %}q={{ query }}&{% endif %}page={{ movies.next_page_number }}">Next →</a>
+        {% else %}
+        <span class="disabled">Next →</span>
+        {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <div class="emoji">🔍</div>
+    <h3>No movies found</h3>
+    <p>{% if query %}No results for "{{ query }}". Try a different search.{% else %}No movies in the database yet. Run
+        the ingest command first.{% endif %}</p>
+</div>
+{% endif %}
+{% endblock %}

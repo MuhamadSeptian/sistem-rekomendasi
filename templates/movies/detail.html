@@ -1,0 +1,84 @@
+{% extends "base.html" %} {% block title %}{{ movie.title }} — CineMatch{% endblock %} {% block content %}
+<div class="detail-layout">
+  <!-- Poster -->
+  <div class="detail-poster">
+    {% if movie.poster_path %}
+    <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}" alt="{{ movie.title }}" />
+    {% else %}
+    <div class="no-poster" style="aspect-ratio: 2/3">🎞️</div>
+    {% endif %}
+  </div>
+
+  <!-- Info -->
+  <div class="detail-info">
+    <h1>{{ movie.title }}</h1>
+
+    <div class="detail-meta">
+      <span class="chip chip-accent">⭐ {{ movie.vote_average|floatformat:1 }}</span>
+      {% if movie.release_date %}
+      <span class="chip">📅 {{ movie.release_date|date:"Y" }}</span>
+      {% endif %} {% for genre in movie.genres.all %}
+      <span class="chip">{{ genre.name }}</span>
+      {% endfor %}
+    </div>
+
+    <p class="detail-overview">{{ movie.overview }}</p>
+
+    <!-- Rating Widget -->
+    {% if user.is_authenticated %}
+    <div class="detail-rating-section" id="rating-section">
+      <h3>{% if user_rating %}Your Rating{% else %}Rate this movie{% endif %}</h3>
+      <div class="star-rating" id="star-rating">
+        <input type="radio" id="star5" name="rating" value="5" {{ checked_5 }} />
+        <label for="star5">★</label>
+        <input type="radio" id="star4" name="rating" value="4" {{ checked_4 }} />
+        <label for="star4">★</label>
+        <input type="radio" id="star3" name="rating" value="3" {{ checked_3 }} />
+        <label for="star3">★</label>
+        <input type="radio" id="star2" name="rating" value="2" {{ checked_2 }} />
+        <label for="star2">★</label>
+        <input type="radio" id="star1" name="rating" value="1" {{ checked_1 }} />
+        <label for="star1">★</label>
+      </div>
+      <p class="rating-feedback" id="rating-feedback">{% if user_rating %}You rated this {{ user_rating.rating }}/5{% endif %}</p>
+    </div>
+    {% else %}
+    <div class="detail-rating-section">
+      <h3>Rate this movie</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem"><a href="{% url 'login' %}?next={{ request.path }}">Log in</a> to rate movies and get recommendations.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %} {% block extra_js %} {% if user.is_authenticated %}
+<script>
+  document.querySelectorAll('#star-rating input').forEach((input) => {
+    input.addEventListener('change', function () {
+      const rating = this.value;
+      const feedback = document.getElementById('rating-feedback');
+
+      fetch("{% url 'rate_movie' movie.tmdb_id %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({ rating: parseInt(rating) }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) {
+            feedback.textContent = 'Rated ' + rating + '/5 ✓';
+            feedback.classList.add('show');
+            document.querySelector('#rating-section h3').textContent = 'Your Rating';
+          }
+        })
+        .catch(() => {
+          feedback.textContent = 'Error saving rating';
+          feedback.style.color = 'var(--red)';
+          feedback.classList.add('show');
+        });
+    });
+  });
+</script>
+{% endif %} {% endblock %}

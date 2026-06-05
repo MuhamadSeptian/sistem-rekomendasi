@@ -1,0 +1,133 @@
+{% extends "base.html" %} {% block title %}Dashboard — CineMatch{% endblock %} {% block content %}
+<!-- Hero -->
+<div class="dash-hero">
+  <h1>Hello, <span>{{ user.username }}</span> 👋</h1>
+  <p>Here are your personalized movie recommendations based on your ratings.</p>
+</div>
+
+<!-- Algorithm Info -->
+{% if rec_method_info %}
+<div class="algo-info-card" style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.5rem; margin-bottom: 2rem">
+  <h3 style="margin: 0 0 0.6rem; font-size: 1rem; color: var(--accent)">🧠 Recommendation Algorithm</h3>
+  <div style="display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.85rem; color: var(--text-muted)">
+    <span><strong>CBF:</strong> {{ rec_method_info.cbf_algo }} (weight {{ rec_method_info.cbf_weight }})</span>
+    <span><strong>CF:</strong> {{ rec_method_info.cf_algo }} (weight {{ rec_method_info.cf_weight }})</span>
+    <span><strong>Hybrid:</strong> {{ rec_method_info.hybrid_algo }}</span>
+  </div>
+</div>
+{% endif %}
+
+<!-- Recommendations -->
+<div class="section-header">
+  <h2><span class="emoji">🎯</span>Recommended For You</h2>
+</div>
+
+{% if recommendations %}
+<div class="movie-grid">
+  {% for movie in recommendations %}
+  <a href="{% url 'movie_detail' movie.tmdb_id %}" class="movie-card card">
+    <div class="poster-wrap">
+      {% if movie.poster_path %}
+      <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}" alt="{{ movie.title }}" loading="lazy" />
+      {% else %}
+      <div class="no-poster">🎞️</div>
+      {% endif %}
+      <div class="poster-overlay">
+        <span>{{ movie.overview|truncatewords:20 }}</span>
+      </div>
+      <div class="rating-badge">⭐ {{ movie.vote_average|floatformat:1 }}</div>
+    </div>
+    <div class="card-body">
+      <h3>{{ movie.title }}</h3>
+      <p class="genres">{% for g in movie.genres.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      <!-- Score breakdown -->
+      {% with details=rec_details %} {% for tid, d in details.items %} {% if tid == movie.tmdb_id %}
+      <div class="score-breakdown" style="margin-top: 0.5rem; font-size: 0.72rem; color: var(--text-muted); line-height: 1.6">
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap">
+          <span title="Content-Based Filtering (TF-IDF + Cosine Similarity)">📄 CBF: {{ d.cbf_score }}</span>
+          <span title="Collaborative Filtering (SVD)">👥 CF: {{ d.cf_score }}</span>
+          <span title="Weighted Hybrid Score" style="color: var(--accent); font-weight: 600">⚡ Hybrid: {{ d.hybrid_score }}</span>
+        </div>
+      </div>
+      {% endif %} {% endfor %} {% endwith %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="emoji">🎯</div>
+  <h3>No recommendations yet</h3>
+  <p>Rate some movies first so we can find your taste!</p>
+  <a href="{% url 'catalog' %}" class="btn btn-primary">Browse Movies</a>
+</div>
+{% endif %}
+
+<!-- User's Ratings -->
+<div class="section-header" style="margin-top: 3rem">
+  <h2><span class="emoji">⭐</span>Your Ratings</h2>
+</div>
+
+{% if user_ratings %}
+<div class="rating-list">
+  {% for r in user_ratings %}
+  <div class="rating-item">
+    <a href="{% url 'movie_detail' r.movie.tmdb_id %}" class="ri-link">
+      <div class="ri-poster">
+        {% if r.movie.poster_path %}
+        <img src="https://image.tmdb.org/t/p/w200{{ r.movie.poster_path }}" alt="{{ r.movie.title }}" />
+        {% else %}
+        <div class="no-poster" style="font-size: 1rem">🎞️</div>
+        {% endif %}
+      </div>
+      <div class="ri-info">
+        <h4>{{ r.movie.title }}</h4>
+        <span class="ri-genres"> {% for g in r.movie.genres.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %} </span>
+      </div>
+    </a>
+    <div class="ri-stars">{% for i in "12345" %}{% if forloop.counter <= r.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
+    <button class="btn-delete-rating" data-tmdb-id="{{ r.movie.tmdb_id }}" data-title="{{ r.movie.title }}" title="Hapus rating">🗑️</button>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="emoji">📝</div>
+  <h3>No ratings yet</h3>
+  <p>Start rating movies to build your profile!</p>
+  <a href="{% url 'catalog' %}" class="btn btn-secondary">Browse Movies</a>
+</div>
+{% endif %} {% endblock %} {% block extra_js %}
+<script>
+  document.querySelectorAll('.btn-delete-rating').forEach((btn) => {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const tmdbId = this.dataset.tmdbId;
+      const title = this.dataset.title;
+      if (!confirm('Hapus rating untuk "' + title + '"?')) return;
+
+      fetch('/movie/' + tmdbId + '/delete-rating/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json',
+        },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) {
+            this.closest('.rating-item').remove();
+            // Jika tidak ada rating tersisa, reload untuk tampilkan empty state
+            if (!document.querySelector('.rating-item')) {
+              location.reload();
+            }
+          } else {
+            alert('Gagal menghapus: ' + (data.error || 'Unknown error'));
+          }
+        })
+        .catch(() => alert('Terjadi kesalahan saat menghapus rating.'));
+    });
+  });
+</script>
+{% endblock %}
